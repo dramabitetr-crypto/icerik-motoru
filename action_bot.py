@@ -15,7 +15,7 @@ def send_telegram_video(bot_token, chat_id, video_path, caption):
     url = f"https://api.telegram.org/bot{bot_token}/sendVideo"
     with open(video_path, 'rb') as video_file:
         files = {'video': video_file}
-        data = {'chat_id": chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
+        data = {'chat_id': chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
         requests.post(url, data=data, files=files)
 
 def main():
