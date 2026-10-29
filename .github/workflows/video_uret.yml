@@ -6,7 +6,7 @@ on:
       konu:
         description: 'Videonun Konusu'
         required: true
-        default: 'Uzaylilar'
+        default: 'Sokak Kedileri'
 
 jobs:
   video_uret:
@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Kutuphaneleri ve Bagimliliklari Indir
+      - name: Kutuphaneleri Indir
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
@@ -35,3 +35,4 @@ jobs:
           KONU: ${{ github.event.inputs.konu }}
           BOT_TOKEN: "9119725211:AAEZ79N0n7ugM45QhR_z3wmEP1AnA0TtqXs"
           CHAT_ID: "6280357308" 
+          FAL_KEY: "fal_sk_d0cda0c039204a838042459d9273fde2:8d1eaabf0c7cddbbce6ae12447cd7c44"
