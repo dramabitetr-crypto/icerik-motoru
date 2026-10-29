@@ -6,7 +6,7 @@ on:
       konu:
         description: 'Videonun Konusu'
         required: true
-        default: 'Uzaylılar'
+        default: 'Uzaylilar'
 
 jobs:
   video_uret:
@@ -21,8 +21,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # DÜZELTME BURADA: Tüm kütüphaneleri zorla indiriyoruz! (ImageMagick dahil, altyazı için şarttır)
-      - name: Kütüphaneleri ve Bağımlılıkları İndir
+      - name: Kutuphaneleri ve Bagimliliklari Indir
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
@@ -30,9 +29,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests gTTS moviepy==1.0.3 numpy==1.24.3 Pillow==10.1.0
 
-      - name: Motoru Çalıştır
+      - name: Motoru Calistir
         run: python action_bot.py
         env:
           KONU: ${{ github.event.inputs.konu }}
           BOT_TOKEN: "9119725211:AAEZ79N0n7ugM45QhR_z3wmEP1AnA0TtqXs"
-          CHAT_ID: "6280357308"
+          CHAT_ID: "6280357308" 
