@@ -1,10 +1,9 @@
 import os
 import sys
 import requests
-import json
-import time
+import urllib.parse
 from gtts import gTTS
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips, TextClip, CompositeVideoClip
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, TextClip, CompositeVideoClip
 
 def send_telegram_message(bot_token, chat_id, text):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -18,99 +17,84 @@ def send_telegram_video(bot_token, chat_id, video_path, caption):
         data = {'chat_id': chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
         requests.post(url, data=data, files=files)
 
-def generate_video_fal(prompt, api_key):
-    url = "https://queue.fal.run/fal-ai/minimax-video"
-    headers = {
-        "Authorization": f"Key {api_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {"prompt": prompt}
-    
-    print("Video API istegi atiliyor...")
-    res = requests.post(url, headers=headers, json=payload)
-    res.raise_for_status()
-    
-    request_id = res.json().get("request_id")
-    print(f"Islem siraya alindi. ID: {request_id}")
-    
-    status_url = f"https://queue.fal.run/fal-ai/minimax-video/requests/{request_id}"
-    
-    while True:
-        status_res = requests.get(status_url, headers=headers)
-        status_json = status_res.json()
-        status = status_json.get("status")
-        
-        if status == "COMPLETED":
-            return status_json["video"]["url"]
-        elif status == "FAILED":
-            raise Exception("Video Uretimi Coktu!")
-        
-        print("Video render ediliyor... Lutfen bekleyin (10s)")
-        time.sleep(10)
+# Ken Burns (Zoom) Kamera Efekti
+def zoom_in_effect(t, duration):
+    return 1 + 0.15 * (t / duration)
 
 def main():
     konu = os.environ.get("KONU")
     bot_token = os.environ.get("BOT_TOKEN")
     chat_id = os.environ.get("CHAT_ID")
-    fal_key = os.environ.get("FAL_KEY")
 
-    if not all([konu, bot_token, chat_id, fal_key]):
+    if not all([konu, bot_token, chat_id]):
         print("Eksik bilgi!")
         sys.exit(1)
 
-    send_telegram_message(bot_token, chat_id, f"⏳ *'{konu}'* konusu isleniyor...\n🧠 1. Adim: Senaryo Yaziliyor ve Minimax API baslatiliyor...")
+    send_telegram_message(bot_token, chat_id, f"⏳ *'{konu}'* konusu işleniyor...\n🧠 1. Adım: Senaryo Yazılıyor (AI)...")
 
     scenes = [
-        {"scene": 1, "prompt": f"Cinematic 3d animation, {konu}, high action, moving camera, unreal engine 5 style", "voice": f"{konu} hakkinda inanilmaz bir yolculuga basliyoruz!"},
-        {"scene": 2, "prompt": f"Close up 3d animation character reacting to {konu}, funny and expressive, motion blur", "voice": "Bazi seyler gercekten cok hizli degisiyor."},
+        {"scene": 1, "prompt": f"Cinematic 3D animation, highly detailed, {konu}, beautiful lighting, unreal engine 5", "voice": f"{konu} hakkında bilmediğiniz korkunç gerçekler!"},
+        {"scene": 2, "prompt": f"Close up 3D character reacting to {konu}, vivid colors, movie still", "voice": "Bu sır yıllarca gizli kaldı, ama artık yüzleşme vakti geldi."},
+        {"scene": 3, "prompt": f"Epic wide shot of {konu}, dramatic scene, 8k resolution", "voice": "Daha fazlası için takip edip beğenmeyi unutmayın!"}
     ]
 
-    send_telegram_message(bot_token, chat_id, "🎥 2. Adim: Hareketli 3D Videolar Uretiliyor... (Minimax motoru devrede. Bu islem 2-3 dakika surebilir)")
+    send_telegram_message(bot_token, chat_id, "🎨 2. Adım: Sahneler 3D olarak çiziliyor ve seslendiriliyor...")
 
     os.makedirs("temp_video", exist_ok=True)
     video_clips = []
 
     for i, scene in enumerate(scenes):
         try:
+            # 1. Ses oluştur
             audio_path = f"temp_video/audio_{i}.mp3"
             tts = gTTS(text=scene["voice"], lang='tr')
             tts.save(audio_path)
             audio_clip = AudioFileClip(audio_path)
             dur = audio_clip.duration
             
-            video_url = generate_video_fal(scene["prompt"], fal_key)
-            print(f"Sahne {i+1} videousu alindi: {video_url}")
+            # 2. ÜCRETSİZ RESİM İNDİR (Sınırsız Pollinations AI kullanıyoruz)
+            encoded_prompt = urllib.parse.quote(scene["prompt"])
+            image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true&seed={i+1000}"
+            img_path = f"temp_video/image_{i}.jpg"
             
-            vid_path = f"temp_video/scene_{i}.mp4"
-            vid_data = requests.get(video_url).content
-            with open(vid_path, 'wb') as f:
-                f.write(vid_data)
+            print(f"Sahne {i+1} için resim indiriliyor...")
+            response = requests.get(image_url, timeout=30)
+            response.raise_for_status()
+            with open(img_path, 'wb') as f:
+                f.write(response.content)
                 
-            base_clip = VideoFileClip(vid_path).subclip(0, min(dur, 5))
+            # 3. KAMERA EFEKTİ VE MONTAJ (Resme hareket katıyoruz)
+            image_clip = ImageClip(img_path).set_duration(dur)
             
+            # Zoom yap ve ekran boyutunda kes (Taşmayı önler)
+            moving_image = image_clip.resize(lambda t: zoom_in_effect(t, dur)).crop(x_center=360, y_center=640, width=720, height=1280)
+            
+            # 4. ALTYAZI (Sarı Tiktok stili)
             txt_clip = TextClip(scene["voice"], fontsize=45, color='yellow', stroke_color='black', stroke_width=2, method='caption', size=(650, None))
-            txt_clip = txt_clip.set_position('center', 'bottom').set_duration(base_clip.duration)
+            txt_clip = txt_clip.set_position('center', 'bottom').set_duration(dur)
             
-            final_clip = CompositeVideoClip([base_clip, txt_clip.set_position(('center', 900))]).set_audio(audio_clip)
+            final_clip = CompositeVideoClip([moving_image, txt_clip.set_position(('center', 900))]).set_audio(audio_clip)
             video_clips.append(final_clip)
             
         except Exception as e:
-            print(f"HATA: Sahne {i+1} atlandi: {e}")
-            send_telegram_message(bot_token, chat_id, f"⚠️ Sahne {i+1} uretilirken hata olustu.")
+            print(f"HATA: Sahne {i+1} atlandı: {e}")
+            send_telegram_message(bot_token, chat_id, f"⚠️ Sahne {i+1} üretilirken hata oluştu.")
 
     if not video_clips:
-        send_telegram_message(bot_token, chat_id, "❌ Hicbir sahne uretilemedi.")
+        send_telegram_message(bot_token, chat_id, "❌ Hiçbir sahne üretilemedi.")
         sys.exit(1)
 
-    send_telegram_message(bot_token, chat_id, "🎬 3. Adim: Video sesler ve altyaziyla montajlaniyor...")
+    send_telegram_message(bot_token, chat_id, "🎬 3. Adım: Video efektler ve altyazıyla montajlanıyor... (Bu işlem 2 dakika sürebilir)")
 
+    # Final Videoyu Çıkart
     final_video = concatenate_videoclips(video_clips, method="compose")
     output_file = "temp_video/final.mp4"
     final_video.write_videofile(output_file, fps=24, codec="libx264", audio_codec="aac")
 
+    # Telegram'a fırlat
     caption = f"🚀 *{konu}*\n\n#kesfet #animasyon #3d #bilgi"
     send_telegram_video(bot_token, chat_id, output_file, caption)
-    print("Islem Basarili! 3D Animasyon Videosu Telegram'a Gonderildi.")
+    print("İşlem Başarılı! Video Telegram'a Gönderildi.")
 
 if __name__ == "__main__":
     main()
