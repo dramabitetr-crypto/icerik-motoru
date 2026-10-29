@@ -31,6 +31,6 @@ jobs:
         env:
           KONU: ${{ github.event.inputs.konu }}
           BOT_TOKEN: "9119725211:AAEZ79N0n7ugM45QhR_z3wmEP1AnA0TtqXs"
-          # Kendi Telegram Chat ID'ni (Sohbet Numaranı) daha sonra buraya ekleyeceğiz.
+          # Kendi Telegram Chat ID'ni (sohbet buraya eliyecez) daha sonra buraya ekleyeceğiz.
           # Şimdilik 12345 yazıyorum.
-          CHAT_ID: "12345" 
+          CHAT_ID: "6280357308" 
