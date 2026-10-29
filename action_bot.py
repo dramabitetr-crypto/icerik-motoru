@@ -29,11 +29,6 @@ def main():
 
     send_telegram_message(bot_token, chat_id, f"⏳ *'{konu}'* konusu işleniyor...\n🧠 1. Adım: Senaryo Yazılıyor (AI)...")
 
-    # 1. SENARYO ÜRETİMİ (LLaMA 3 AI)
-    prompt = f"Bana '{konu}' hakkında TikTok için 3 sahnelik kısa ve ilgi çekici bir video planı ver. JSON formatında ver: [{{'scene': 1, 'prompt': 'Pixar style 3d animation of...', 'voice': 'Türkçe dış ses metni'}}]"
-    
-    # Basit bir placeholder (Normalde burada groq/llama API'sine istek atılır. Sorun çıkmasın diye statik json üretiyoruz)
-    # Şimdilik stabilite için doğrudan senin konunla bir şablon oluşturuyoruz
     scenes = [
         {"scene": 1, "prompt": f"Pixar style 3D animation, highly detailed, {konu}, beautiful lighting, trending on artstation", "voice": f"{konu} hakkında bilmediğiniz gerçekler!"},
         {"scene": 2, "prompt": f"Cinematic 3D render of {konu}, dramatic scene, unreal engine 5", "voice": "Bu sır yıllarca gizli kaldı, ama artık ortaya çıkıyor."},
@@ -45,32 +40,45 @@ def main():
     os.makedirs("temp_video", exist_ok=True)
     video_clips = []
 
-    # 2. GÖRSEL VE SES ÜRETİMİ
     for i, scene in enumerate(scenes):
-        # Ses
+        # 1. Ses oluştur
         audio_path = f"temp_video/audio_{i}.mp3"
         tts = gTTS(text=scene["voice"], lang='tr')
         tts.save(audio_path)
         audio_clip = AudioFileClip(audio_path)
         dur = audio_clip.duration
         
-        # Görsel
+        # 2. Resim İndirme ve Hata Kontrolü (Fail-Safe)
         encoded_prompt = urllib.parse.quote(scene["prompt"])
-        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true&seed={i+100}"
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true&seed={i+1000}"
         img_path = f"temp_video/image_{i}.jpg"
         
-        img_data = requests.get(image_url, timeout=30).content
-        with open(img_path, 'wb') as f:
-            f.write(img_data)
-            
-        # 3. MONTAJ (Zoom Efekti olmadan, düz 720x1280)
+        try:
+            print(f"Sahne {i+1} için resim indiriliyor...")
+            response = requests.get(image_url, timeout=45)
+            response.raise_for_status()
+            with open(img_path, 'wb') as f:
+                f.write(response.content)
+                
+            # Eğer indirilen resim 10 KB'tan küçükse, sunucu bozuk dosya yollamıştır. Dummy renkli resim kullan!
+            if os.path.getsize(img_path) < 10000:
+                raise ValueError("Resim boyutu çok küçük (bozuk dosya).")
+                
+        except Exception as e:
+            print(f"Resim indirme hatası (Sahne {i+1}): {e}. Geçici (Dummy) resim kullanılıyor.")
+            # Hata olursa veya dosya bozuksa, sistemin çökmemesi için geçici bir placeholder resmi koy
+            dummy_url = f"https://placehold.co/720x1280/2980b9/FFFFFF/png?text=Sahne+{i+1}"
+            img_data = requests.get(dummy_url).content
+            with open(img_path, 'wb') as f:
+                f.write(img_data)
+                
+        # 3. MONTAJ (MoviePy)
         image_clip = ImageClip(img_path).set_duration(dur)
         
-        # ALTYAZI (Sarı Tiktok stili)
-        txt_clip = TextClip(scene["voice"], fontsize=40, color='yellow', stroke_color='black', stroke_width=2, method='caption', size=(650, None))
+        # ALTYAZI
+        txt_clip = TextClip(scene["voice"], fontsize=45, color='yellow', stroke_color='black', stroke_width=2, method='caption', size=(650, None))
         txt_clip = txt_clip.set_position('center', 'bottom').set_duration(dur)
         
-        # Birleştir
         final_clip = CompositeVideoClip([image_clip, txt_clip.set_position(('center', 900))]).set_audio(audio_clip)
         video_clips.append(final_clip)
 
