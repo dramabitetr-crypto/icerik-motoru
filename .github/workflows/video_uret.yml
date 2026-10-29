@@ -1,0 +1,36 @@
+name: Video Uretim Motoru
+
+# Sadece "Run workflow" butonuna basıldığında (workflow_dispatch) çalışır
+on:
+  workflow_dispatch:
+    inputs:
+      konu:
+        description: 'Videonun Konusu (Örn: Sokak Kedileri)'
+        required: true
+        default: 'Yapay Zeka ve Gelecek'
+
+jobs:
+  video_uret:
+    runs-on: ubuntu-latest # GitHub'ın ücretsiz Linux bilgisayarları
+
+    steps:
+      - name: Kodu Kopyala (Checkout)
+        uses: actions/checkout@v4
+
+      - name: Python Kurulumu
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Gerekli Kütüphaneleri İndir
+        run: |
+          pip install requests
+
+      - name: Videoyu Üret ve Telegram'a Yolla
+        run: python action_bot.py
+        env:
+          KONU: ${{ github.event.inputs.konu }}
+          BOT_TOKEN: "9119725211:AAEZ79N0n7ugM45QhR_z3wmEP1AnA0TtqXs"
+          # Kendi Telegram Chat ID'ni (Sohbet Numaranı) daha sonra buraya ekleyeceğiz.
+          # Şimdilik 12345 yazıyorum.
+          CHAT_ID: "12345" 
