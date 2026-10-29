@@ -4,6 +4,7 @@ import requests
 import urllib.parse
 from gtts import gTTS
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips, TextClip, CompositeVideoClip
+from gradio_client import Client
 
 def send_telegram_message(bot_token, chat_id, text):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -17,7 +18,30 @@ def send_telegram_video(bot_token, chat_id, video_path, caption):
         data = {'chat_id': chat_id, 'caption': caption, 'parse_mode': 'Markdown'}
         requests.post(url, data=data, files=files)
 
-# Ken Burns (Zoom) Kamera Efekti
+# API anahtarı istemeyen sınırsız Gradio (Hugging Face) Bot Motoru
+def generate_free_image(prompt):
+    print(f"Hugging Face (Gradio) uzerinden ucretsiz resim cizdiriliyor: {prompt}")
+    try:
+        # Sınırsız ve ücretsiz açık kaynaklı model (SDXL)
+        client = Client("stabilityai/stable-diffusion-3-medium")
+        result = client.predict(
+            prompt=prompt,
+            negative_prompt="ugly, deformed, blurry, text, watermark",
+            seed=0,
+            randomize_seed=True,
+            width=768,
+            height=1024,
+            guidance_scale=5,
+            num_inference_steps=28,
+            api_name="/infer"
+        )
+        # Result, indirilen dosyanin yolunu (path) doner
+        image_path = result[0] 
+        return image_path
+    except Exception as e:
+        print(f"Hugging Face uretiminde hata: {e}")
+        return None
+
 def zoom_in_effect(t, duration):
     return 1 + 0.15 * (t / duration)
 
@@ -38,7 +62,7 @@ def main():
         {"scene": 3, "prompt": f"Epic wide shot of {konu}, dramatic scene, 8k resolution", "voice": "Daha fazlası için takip edip beğenmeyi unutmayın!"}
     ]
 
-    send_telegram_message(bot_token, chat_id, "🎨 2. Adım: Sahneler 3D olarak çiziliyor ve seslendiriliyor...")
+    send_telegram_message(bot_token, chat_id, "🎨 2. Adım: Sahneler 3D olarak çiziliyor (Hugging Face kullanılıyor) ve seslendiriliyor...")
 
     os.makedirs("temp_video", exist_ok=True)
     video_clips = []
@@ -52,28 +76,21 @@ def main():
             audio_clip = AudioFileClip(audio_path)
             dur = audio_clip.duration
             
-            # 2. ÜCRETSİZ RESİM İNDİR (Sınırsız Pollinations AI kullanıyoruz)
-            encoded_prompt = urllib.parse.quote(scene["prompt"])
-            image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=720&height=1280&nologo=true&seed={i+1000}"
-            img_path = f"temp_video/image_{i}.jpg"
+            # 2. ÜCRETSİZ RESİM İNDİR (Hugging Face)
+            img_path = generate_free_image(scene["prompt"])
             
-            print(f"Sahne {i+1} için resim indiriliyor...")
-            response = requests.get(image_url, timeout=30)
-            response.raise_for_status()
-            with open(img_path, 'wb') as f:
-                f.write(response.content)
+            if not img_path or not os.path.exists(img_path):
+                raise ValueError("Resim uretilemedi.")
                 
-            # 3. KAMERA EFEKTİ VE MONTAJ (Resme hareket katıyoruz)
+            # 3. KAMERA EFEKTİ VE MONTAJ 
             image_clip = ImageClip(img_path).set_duration(dur)
-            
-            # Zoom yap ve ekran boyutunda kes (Taşmayı önler)
-            moving_image = image_clip.resize(lambda t: zoom_in_effect(t, dur)).crop(x_center=360, y_center=640, width=720, height=1280)
+            moving_image = image_clip.resize(lambda t: zoom_in_effect(t, dur)).crop(x_center=384, y_center=512, width=720, height=1024)
             
             # 4. ALTYAZI (Sarı Tiktok stili)
             txt_clip = TextClip(scene["voice"], fontsize=45, color='yellow', stroke_color='black', stroke_width=2, method='caption', size=(650, None))
             txt_clip = txt_clip.set_position('center', 'bottom').set_duration(dur)
             
-            final_clip = CompositeVideoClip([moving_image, txt_clip.set_position(('center', 900))]).set_audio(audio_clip)
+            final_clip = CompositeVideoClip([moving_image, txt_clip.set_position(('center', 800))]).set_audio(audio_clip)
             video_clips.append(final_clip)
             
         except Exception as e:
@@ -86,12 +103,10 @@ def main():
 
     send_telegram_message(bot_token, chat_id, "🎬 3. Adım: Video efektler ve altyazıyla montajlanıyor... (Bu işlem 2 dakika sürebilir)")
 
-    # Final Videoyu Çıkart
     final_video = concatenate_videoclips(video_clips, method="compose")
     output_file = "temp_video/final.mp4"
     final_video.write_videofile(output_file, fps=24, codec="libx264", audio_codec="aac")
 
-    # Telegram'a fırlat
     caption = f"🚀 *{konu}*\n\n#kesfet #animasyon #3d #bilgi"
     send_telegram_video(bot_token, chat_id, output_file, caption)
     print("İşlem Başarılı! Video Telegram'a Gönderildi.")
