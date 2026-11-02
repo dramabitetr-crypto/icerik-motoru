@@ -1,15 +1,15 @@
-name: Levent Video Motoru
+name: Video Uretim Motoru
 
 on:
   workflow_dispatch:
     inputs:
       konu:
-        description: 'Videonun Konusu (Levent ne anlatsın?)'
+        description: 'Videonun Konusu'
         required: true
-        default: 'Metrodaki Gizemli Kedi'
+        default: 'Sokak Kedileri'
 
 jobs:
-  levent_video_uret:
+  video_uret:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,17 +21,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Kütüphaneleri Zorla İndir (ImageMagick Dahil)
+      - name: Kutuphaneleri Indir
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
           sudo sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!-- <policy domain="path" rights="none" pattern="@\*" -->/' /etc/ImageMagick-6/policy.xml
           python -m pip install --upgrade pip
-          pip install requests gTTS moviepy==1.0.3 numpy==1.24.3 Pillow==9.5.0
+          pip install requests edge-tts moviepy==1.0.3 numpy==1.24.3 Pillow==9.5.0 fal-client
 
-      - name: Levent Motorunu Çalıştır
+      - name: Motoru Calistir
         run: python action_bot.py
         env:
           KONU: ${{ github.event.inputs.konu }}
           BOT_TOKEN: "9119725211:AAEZ79N0n7ugM45QhR_z3wmEP1AnA0TtqXs"
-          CHAT_ID: "6280357308"
+          CHAT_ID: "6280357308" 
+          FAL_KEY: "fal_sk_d0cda0c039204a838042459d9273fde2:8d1eaabf0c7cddbbce6ae12447cd7c44"
