@@ -1,15 +1,15 @@
-name: Video Uretim Motoru
+name: Levent Video Motoru
 
 on:
   workflow_dispatch:
     inputs:
       konu:
-        description: 'Videonun Konusu'
+        description: 'Videonun Konusu (Levent ne anlatsın?)'
         required: true
-        default: 'Uzaylilar'
+        default: 'Metrodaki Gizemli Kedi'
 
 jobs:
-  video_uret:
+  levent_video_uret:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,18 +21,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      # BÜTÜN SORUNU ÇÖZEN ADIM: Gerekli olan her şeyi burada zorla kurduruyoruz!
-      - name: Kutuphaneleri ve Bagimliliklari Indir
+      - name: Kütüphaneleri Zorla İndir (ImageMagick Dahil)
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
           sudo sed -i 's/<policy domain="path" rights="none" pattern="@\*"/<!-- <policy domain="path" rights="none" pattern="@\*" -->/' /etc/ImageMagick-6/policy.xml
           python -m pip install --upgrade pip
-          pip install requests gTTS moviepy==1.0.3 numpy==1.24.3 Pillow==9.5.0 gradio-client==0.16.1
+          pip install requests gTTS moviepy==1.0.3 numpy==1.24.3 Pillow==9.5.0
 
-      - name: Motoru Calistir
+      - name: Levent Motorunu Çalıştır
         run: python action_bot.py
         env:
           KONU: ${{ github.event.inputs.konu }}
           BOT_TOKEN: "9119725211:AAEZ79N0n7ugM45QhR_z3wmEP1AnA0TtqXs"
-          CHAT_ID: "6280357308" 
+          CHAT_ID: "6280357308"
